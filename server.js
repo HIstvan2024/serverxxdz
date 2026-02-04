@@ -482,7 +482,7 @@ async function handleContactMode(urls) {
     const emails = extractEmails(pageData.markdown);
     
     // Check if we found contacts
-    const hasContacts = emails.length > 0 || phones.all.length > 0;
+    const hasContacts = emails.length > 0;
     
     if (hasContacts) {
       // Found on main page
@@ -505,7 +505,7 @@ async function handleContactMode(urls) {
         const bestContactUrl = contactLinks[0].link.url;
         
         // Scrape contact page
-        const contactPageData = await scrapePage(bestContactUrl, true);
+       const contactPageData = await scrapePage(bestContactUrl, true);
         
         if (contactPageData.success) {
           const deepPhones = extractAllPhones(contactPageData.markdown);

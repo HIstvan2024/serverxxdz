@@ -625,8 +625,8 @@ app.get('/health', (req, res) => {
 
 const PORT = 3333;
 initBrowser().then(() => {
-  app.listen(PORT, '127.0.0.1', () => {
-    console.log(`Scraper API running on http://127.0.0.1:${PORT}`);
+  app.listen(PORT, '172.17.0.1', () => {
+    console.log(`Scraper API running on http://172.17.0.1:${PORT}`);
     console.log('Modes: contact (default), content');
     console.log('Set mode via header: x-mode or mode');
   });

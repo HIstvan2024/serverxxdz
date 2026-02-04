@@ -331,8 +331,8 @@ function findContactLinks(markdown, baseUrl) {
 // HTML TO MARKDOWN CONVERSION
 // ============================================================
 
-async function getPageMarkdown(page) {
-  return await page.evaluate(() => {
+async function getPageMarkdown(page, fullPage = false) {
+  return await page.evaluate((fullPage) => {
     function htmlToMarkdown(element) {
       let md = '';
       
@@ -342,7 +342,6 @@ async function getPageMarkdown(page) {
         } else if (node.nodeType === Node.ELEMENT_NODE) {
           const tag = node.tagName.toLowerCase();
           
-          // Skip hidden, script, style, nav, footer
           const style = window.getComputedStyle(node);
           if (style.display === 'none' || style.visibility === 'hidden') continue;
           if (['script', 'style', 'noscript', 'iframe', 'svg'].includes(tag)) continue;
@@ -366,6 +365,8 @@ async function getPageMarkdown(page) {
               const text = htmlToMarkdown(node).trim();
               if (href && text) {
                 md += `[${text}](${href})`;
+              } else if (href) {
+                md += `[${href}](${href})`;
               } else {
                 md += text;
               }
@@ -404,11 +405,6 @@ async function getPageMarkdown(page) {
                 }
               });
               break;
-            case 'div':
-            case 'section':
-            case 'article':
-            case 'main':
-            case 'span':
             default:
               md += htmlToMarkdown(node);
           }
@@ -417,11 +413,17 @@ async function getPageMarkdown(page) {
       return md;
     }
     
-    // Try to find main content
-    const main = document.querySelector('main, article, [role="main"], .content, #content') || document.body;
-    let markdown = htmlToMarkdown(main);
+    // For contact mode: scrape full body including header/footer
+    // For content mode: try to find main content area
+    let target;
+    if (fullPage) {
+      target = document.body;
+    } else {
+      target = document.querySelector('main, article, [role="main"], .content, #content') || document.body;
+    }
     
-    // Clean up
+    let markdown = htmlToMarkdown(target);
+    
     markdown = markdown
       .replace(/\n{3,}/g, '\n\n')
       .replace(/[ \t]+/g, ' ')
@@ -429,21 +431,21 @@ async function getPageMarkdown(page) {
       .trim();
     
     return markdown;
-  });
+  }, fullPage);
 }
 
 // ============================================================
 // SCRAPE URL
 // ============================================================
 
-async function scrapePage(url) {
+async function scrapePage(url, fullPage = false) {
   const page = await browser.newPage();
   
   try {
     await page.goto(url, { timeout: 30000, waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
     
-    const markdown = await getPageMarkdown(page);
+    const markdown = await getPageMarkdown(page, fullPage);
     
     return { url, markdown, success: true };
   } catch (e) {
@@ -461,7 +463,7 @@ async function handleContactMode(urls) {
   const results = [];
   
   for (const url of urls) {
-    const pageData = await scrapePage(url);
+    const pageData = await scrapePage(url, true);  // fullPage = true for contacts
     
     if (!pageData.success) {
       results.push({
@@ -503,7 +505,7 @@ async function handleContactMode(urls) {
         const bestContactUrl = contactLinks[0].link.url;
         
         // Scrape contact page
-        const contactPageData = await scrapePage(bestContactUrl);
+        const contactPageData = await scrapePage(bestContactUrl, true);
         
         if (contactPageData.success) {
           const deepPhones = extractAllPhones(contactPageData.markdown);
